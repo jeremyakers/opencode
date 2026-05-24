@@ -3,22 +3,24 @@
 Task: prevent oversized persisted tool outputs from being replayed into model context without a default cap.
 
 Worktree and branch:
-- Worktree: `/home/jeremy/coding/opencode`
-- Branch: `jeremy/prompt-submit-hydration-23903`
+- Worktree: `/home/jeremy/tymemud/_agent_work/sisyphus/opencode-tool-output-context-cap`
+- Branch: `sisyphus/tool-output-context-cap-20260524`
+- Base: latest fetched `origin/dev` at `0cf99cf5f`.
 
 Scope boundaries:
-- In scope: `packages/opencode/src/session/message-v2.ts`, `packages/opencode/src/session/compaction.ts`, `packages/opencode/test/session/message-v2.test.ts`, this ledger, and the durable plan.
+- In scope: `packages/opencode/src/session/message-v2.ts`, `packages/opencode/src/session/compaction.ts`, `packages/opencode/test/session/message-v2.test.ts`, `packages/opencode/src/bus/global.ts`, `packages/opencode/test/bus/global.test.ts`, this ledger, and the durable plan.
 - Out of scope: generated SDKs, broad compaction selection rewrites, TUI reconnect work, app prompt-submit hydration work, server restarts, process killing.
 
 Validation expectations:
 - LSP diagnostics on touched TypeScript files.
-- Focused `message-v2` and compaction tests from `/home/jeremy/coding/opencode/packages/opencode`.
-- `bun typecheck` from `/home/jeremy/coding/opencode/packages/opencode`.
-- `GIT_MASTER=1 git diff --check` from `/home/jeremy/coding/opencode`.
+- Focused `message-v2`, compaction, and global bus tests from `/home/jeremy/tymemud/_agent_work/sisyphus/opencode-tool-output-context-cap/packages/opencode`.
+- `bun typecheck` from `/home/jeremy/tymemud/_agent_work/sisyphus/opencode-tool-output-context-cap/packages/opencode`.
+- `GIT_MASTER=1 git diff --check` from `/home/jeremy/tymemud/_agent_work/sisyphus/opencode-tool-output-context-cap`.
 
 Manual-test surfaces:
 - A session with a huge completed tool output should not replay that full output into a later model request.
 - Compacted tool outputs should still replay as `[Old tool result content cleared]`.
+- Multiple concurrent OpenCode sessions or global event/SSE consumers should not trip Node's default 10-listener warning on the shared `GlobalBus`.
 
 ## Phase 1: Plan and evidence capture
 
@@ -107,5 +109,57 @@ Validation:
 - Complete validation and review evidence is recorded in Phase 2.
 
 Limitations / risks:
-- The checkout still contains unrelated dirty TUI reconnect files and prior untracked plans/ledgers that predate this fix.
-- Commit/push status is pending final git safety inspection.
+- This old status was from the original dirty checkout. The follow-up work moved to the clean upstream-based worktree named above.
+
+## Phase 4: Clean upstream branch
+
+Status: completed
+
+What changed:
+- Created clean worktree `/home/jeremy/tymemud/_agent_work/sisyphus/opencode-tool-output-context-cap`.
+- Created branch `sisyphus/tool-output-context-cap-20260524` from latest `origin/dev` at `0cf99cf5f`.
+- Cherry-picked the context-cap source commit and the evidence docs commit onto the clean branch:
+  - `7314cd6b6 fix(session): cap tool output replay by default` from `455713da4`.
+  - `caaa20393 docs: record tool output cap evidence` from `ae55e836e`.
+- Deliberately did not carry old commit `c7729a035 docs: note tool output cap push blocker` because it documented the previous dirty-checkout push failure, not the clean branch state.
+
+Why:
+- Latest upstream still had `truncateToolOutput(text, maxChars?: number)` with no default cap, so the exact context-cap fix was still needed, but the dirty old checkout was 473 commits behind `origin/dev`.
+
+Validation:
+- `GIT_MASTER=1 git status --short --branch --untracked-files=all`: clean after cherry-picks and before the GlobalBus follow-up.
+
+Limitations / risks:
+- None for branch setup.
+
+## Phase 5: GlobalBus listener warning follow-up
+
+Status: completed
+
+What changed:
+- Raised `GlobalBus`'s listener threshold to `100`.
+- Added `packages/opencode/test/bus/global.test.ts`, which attaches 25 event handlers, emits one event, verifies all handlers receive it, and verifies cleanup restores the original listener count.
+
+Files and anchors:
+- `packages/opencode/src/bus/global.ts`: `GlobalBus.setMaxListeners(100)` with local rationale comment.
+- `packages/opencode/test/bus/global.test.ts`: focused fanout regression test.
+
+Why:
+- Screenshot `/home/jeremy/Pictures/OpenCode_crash_2026-05-24_08-52.png` shows `MaxListenersExceededWarning: Possible EventTarget memory leak detected. 11 event listeners added to [iz]` followed by `Trace/breakpoint trap`.
+- The user confirmed another OpenCode session was active, which makes the shared global event fanout path plausible.
+- Upstream issue `#28492` reports the same warning and stack after the web interface starts.
+- Upstream issue `#23798` and PR `#23796` identify normal `GlobalBus` fanout over Node's default 10-listener threshold as the false warning path; the `100` threshold is copied from that upstream PR rather than locally invented.
+
+Validation:
+- `PATH="/home/jeremy/.bun/bin:$PATH" /home/jeremy/.bun/bin/bun install --frozen-lockfile --ignore-scripts`: passed after a normal install failed on missing `node-gyp` for `tree-sitter-powershell`.
+- LSP diagnostics on `packages/opencode/src/bus/global.ts`, `packages/opencode/test/bus/global.test.ts`, `packages/opencode/src/session/message-v2.ts`, `packages/opencode/src/session/compaction.ts`, and `packages/opencode/test/session/message-v2.test.ts`: no diagnostics after current dependencies were installed.
+- `PATH="/home/jeremy/.bun/bin:$PATH" /home/jeremy/.bun/bin/bun test test/bus/global.test.ts`: `1 pass`, `0 fail`, `3 expect() calls`.
+- `PATH="/home/jeremy/.bun/bin:$PATH" /home/jeremy/.bun/bin/bun test test/session/message-v2.test.ts test/session/compaction.test.ts`: `88 pass`, `0 fail`, `208 expect() calls`.
+- `PATH="/home/jeremy/.bun/bin:$PATH" /home/jeremy/.bun/bin/bun typecheck`: passed with `tsgo --noEmit`.
+- `GIT_MASTER=1 git diff --check`: passed.
+- `PATH="/home/jeremy/.bun/bin:$PATH" /home/jeremy/.bun/bin/bun run script/build.ts`: blocked because upstream now requires Bun `^1.3.14`; this host has Bun `1.3.13`.
+
+Limitations / risks:
+- The screenshot warning was not present in the latest log files; it appears to be emitted to the terminal rather than the normal OpenCode log.
+- This fixes the known false-positive listener warning path for shared `GlobalBus`; if another EventTarget accumulates listeners, additional evidence will be needed.
+- Full build still needs to be rerun after upgrading/installing Bun `1.3.14` or newer.
