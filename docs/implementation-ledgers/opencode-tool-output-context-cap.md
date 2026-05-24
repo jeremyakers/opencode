@@ -163,3 +163,27 @@ Limitations / risks:
 - The screenshot warning was not present in the latest log files; it appears to be emitted to the terminal rather than the normal OpenCode log.
 - This fixes the known false-positive listener warning path for shared `GlobalBus`; if another EventTarget accumulates listeners, additional evidence will be needed.
 - Full build still needs to be rerun after upgrading/installing Bun `1.3.14` or newer.
+
+## Phase 6: Shipping status
+
+Status: completed with push blocked
+
+What changed:
+- Committed the clean upstream-based work on `sisyphus/tool-output-context-cap-20260524`.
+
+Local commits on top of `origin/dev`:
+- `7314cd6b6 fix(session): cap tool output replay by default`
+- `caaa20393 docs: record tool output cap evidence`
+- `c6cb6f09c fix(bus): raise global event listener threshold`
+- `2176fde23 docs: update tool output cap clean-branch evidence`
+
+Validation:
+- Full validation status is recorded in Phase 5.
+
+Push status:
+- Attempted `GIT_MASTER=1 git push -u fork HEAD:refs/heads/sisyphus/tool-output-context-cap-20260524`.
+- Push failed because GitHub credentials were unavailable to the non-interactive shell: `fatal: could not read Username for 'https://github.com': terminal prompts disabled`.
+
+Remaining:
+- Branch remains local until pushed from an authenticated environment.
+- Full build remains blocked until Bun `1.3.14` or newer is installed.
