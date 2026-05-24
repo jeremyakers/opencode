@@ -187,3 +187,19 @@ Push status:
 Remaining:
 - Branch remains local until pushed from an authenticated environment.
 - Full build remains blocked until Bun `1.3.14` or newer is installed.
+
+## Phase 7: Final review
+
+Status: completed with external blockers
+
+Review results:
+- Goal/constraint Oracle: PASS. Implementation satisfies the context-cap goal and the GlobalBus warning/crash follow-up; build and push blockers are external.
+- Code-quality Oracle: PASS. Default truncation preserves explicit overrides, and the GlobalBus cap is justified by upstream provenance.
+- Security Oracle: PASS, severity none. The replay cap reduces context exposure, and the listener threshold change adds no auth, network, or file-write attack surface.
+- Context mining: PASS. No material missed upstream context; related upstream issues and PRs are recorded.
+- QA: FAIL only because full build validation could not run under this host's Bun `1.3.13` while latest upstream requires `^1.3.14`.
+
+Validation summary:
+- Focused tests, typecheck, LSP diagnostics, and diff check passed as recorded above.
+- Full build remains blocked by the local Bun version.
+- Push remains blocked by unavailable HTTPS GitHub credentials in the non-interactive shell.
