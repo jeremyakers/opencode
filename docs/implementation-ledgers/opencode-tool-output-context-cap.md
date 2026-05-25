@@ -171,7 +171,7 @@ Limitations / risks:
 
 ## Phase 6: Shipping status
 
-Status: completed with push blocked
+Status: completed; superseded by Phase 9 push success
 
 What changed:
 - Committed the clean upstream-based work on `sisyphus/tool-output-context-cap-20260524`.
@@ -224,4 +224,20 @@ Validation:
 - `GIT_MASTER=1 git status --short --untracked-files=all`: clean after build.
 
 Remaining:
-- Push still needs an authenticated GitHub credential path.
+- Push still needed an SSH-authenticated GitHub credential path at this point.
+
+## Phase 9: SSH push
+
+Status: completed
+
+What changed:
+- Pushed the clean branch to the fork using the SSH URL directly, without changing git remote config.
+
+Commands and results:
+- Initial SSH push reached the pre-push hook but failed because the hook PATH did not include Bun: `.husky/pre-push: 5: bun: not found`.
+- Retried with `PATH="/home/jeremy/.bun/bin:$PATH"` so the hook could run normally.
+- Pre-push hook ran `bun turbo typecheck`.
+- `GIT_MASTER=1 git ls-remote --heads git@github.com:jeremyakers/opencode.git sisyphus/tool-output-context-cap-20260524`: confirmed remote branch at `587fef2e4bcb3192737f0a8b357e1d44d5d3862a`.
+
+Remaining:
+- This ledger update itself still needs one final push after commit.
