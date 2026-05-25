@@ -157,12 +157,17 @@ Validation:
 - `PATH="/home/jeremy/.bun/bin:$PATH" /home/jeremy/.bun/bin/bun test test/session/message-v2.test.ts test/session/compaction.test.ts`: `88 pass`, `0 fail`, `208 expect() calls`.
 - `PATH="/home/jeremy/.bun/bin:$PATH" /home/jeremy/.bun/bin/bun typecheck`: passed with `tsgo --noEmit`.
 - `GIT_MASTER=1 git diff --check`: passed.
-- `PATH="/home/jeremy/.bun/bin:$PATH" /home/jeremy/.bun/bin/bun run script/build.ts`: blocked because upstream now requires Bun `^1.3.14`; this host has Bun `1.3.13`.
+- Initial `PATH="/home/jeremy/.bun/bin:$PATH" /home/jeremy/.bun/bin/bun run script/build.ts`: blocked because upstream requires Bun `^1.3.14` and the host initially had Bun `1.3.13`.
+- After Bun was upgraded to `1.3.14`, `PATH="/home/jeremy/.bun/bin:$PATH" /home/jeremy/.bun/bin/bun run script/build.ts`: passed.
+- Binary smoke checks passed:
+  - `./dist/opencode-linux-x64/bin/opencode --version`: `0.0.0-sisyphus/tool-output-context-cap-20260524-202605251618`.
+  - `./dist/opencode-linux-x64-baseline/bin/opencode --version`: `0.0.0-sisyphus/tool-output-context-cap-20260524-202605251618`.
+- `GIT_MASTER=1 git status --short --untracked-files=all`: clean after the build and smoke checks.
 
 Limitations / risks:
 - The screenshot warning was not present in the latest log files; it appears to be emitted to the terminal rather than the normal OpenCode log.
 - This fixes the known false-positive listener warning path for shared `GlobalBus`; if another EventTarget accumulates listeners, additional evidence will be needed.
-- Full build still needs to be rerun after upgrading/installing Bun `1.3.14` or newer.
+- Full build passed after upgrading/installing Bun `1.3.14` or newer.
 
 ## Phase 6: Shipping status
 
@@ -186,7 +191,7 @@ Push status:
 
 Remaining:
 - Branch remains local until pushed from an authenticated environment.
-- Full build remains blocked until Bun `1.3.14` or newer is installed.
+- Full build is now validated after Bun was upgraded to `1.3.14`.
 
 ## Phase 7: Final review
 
@@ -197,9 +202,26 @@ Review results:
 - Code-quality Oracle: PASS. Default truncation preserves explicit overrides, and the GlobalBus cap is justified by upstream provenance.
 - Security Oracle: PASS, severity none. The replay cap reduces context exposure, and the listener threshold change adds no auth, network, or file-write attack surface.
 - Context mining: PASS. No material missed upstream context; related upstream issues and PRs are recorded.
-- QA: FAIL only because full build validation could not run under this host's Bun `1.3.13` while latest upstream requires `^1.3.14`.
+- QA: originally failed only because full build validation could not run under Bun `1.3.13`; after Bun was upgraded to `1.3.14`, the full build and binary smoke checks passed.
 
 Validation summary:
 - Focused tests, typecheck, LSP diagnostics, and diff check passed as recorded above.
-- Full build remains blocked by the local Bun version.
+- Full build passed after the local Bun upgrade.
 - Push remains blocked by unavailable HTTPS GitHub credentials in the non-interactive shell.
+
+## Phase 8: Post-upgrade build validation
+
+Status: completed
+
+What changed:
+- Re-ran full build after Bun was upgraded from `1.3.13` to `1.3.14`.
+
+Validation:
+- `/home/jeremy/.bun/bin/bun --version`: `1.3.14`.
+- `PATH="/home/jeremy/.bun/bin:$PATH" /home/jeremy/.bun/bin/bun run script/build.ts`: passed.
+- `./dist/opencode-linux-x64/bin/opencode --version`: `0.0.0-sisyphus/tool-output-context-cap-20260524-202605251618`.
+- `./dist/opencode-linux-x64-baseline/bin/opencode --version`: `0.0.0-sisyphus/tool-output-context-cap-20260524-202605251618`.
+- `GIT_MASTER=1 git status --short --untracked-files=all`: clean after build.
+
+Remaining:
+- Push still needs an authenticated GitHub credential path.
