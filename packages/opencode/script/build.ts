@@ -78,6 +78,35 @@ const createEmbeddedWebUIBundle = async () => {
   ].join("\n")
 }
 
+function findNativeAsset(packageName: string, filename: string) {
+  const direct = path.join(dir, "node_modules", packageName, filename)
+  if (fs.existsSync(direct)) return fs.realpathSync(direct)
+
+  const root = path.resolve(dir, "../../node_modules")
+  const rootDirect = path.join(root, packageName, filename)
+  if (fs.existsSync(rootDirect)) return fs.realpathSync(rootDirect)
+
+  const bunStore = path.join(root, ".bun")
+  const prefix = `${packageName.replace("/", "+")}@`
+  for (const entry of fs.readdirSync(bunStore)) {
+    if (!entry.startsWith(prefix)) continue
+    const candidate = path.join(bunStore, entry, "node_modules", packageName, filename)
+    if (fs.existsSync(candidate)) return fs.realpathSync(candidate)
+  }
+
+  throw new Error(`Unable to find native asset ${filename} from ${packageName}`)
+}
+
+function createNativeAssetBundle(item: { os: string; arch: "arm64" | "x64"; abi?: "musl" }) {
+  const opentuiPackage = `@opentui/core-${item.os}-${item.arch}`
+  const opentuiFile = item.os === "win32" ? "opentui.dll" : item.os === "darwin" ? "libopentui.dylib" : "libopentui.so"
+  const imports = [findNativeAsset(opentuiPackage, opentuiFile)].map((asset, index) => {
+    const spec = path.relative(dir, asset).replaceAll("\\", "/")
+    return `import asset_${index} from ${JSON.stringify(spec.startsWith(".") ? spec : `./${spec}`)} with { type: "file" };`
+  })
+  return [...imports, `export default [${imports.map((_, index) => `asset_${index}`).join(", ")}]`].join("\n")
+}
+
 const embeddedFileMap = skipEmbedWebUi ? null : await createEmbeddedWebUIBundle()
 
 const allTargets: {
@@ -189,6 +218,7 @@ for (const item of targets) {
   const rootPath = path.resolve(dir, "../../node_modules/@opentui/core/parser.worker.js")
   const parserWorker = fs.realpathSync(fs.existsSync(localPath) ? localPath : rootPath)
   const workerPath = "./src/cli/cmd/tui/worker.ts"
+  const nativeAssets = createNativeAssetBundle(item)
 
   // Use platform-specific bunfs root path based on target OS
   const bunfsRoot = item.os === "win32" ? "B:/~BUN/root/" : "/$bunfs/root/"
@@ -213,8 +243,17 @@ for (const item of targets) {
       execArgv: [`--user-agent=opencode/${Script.version}`, "--use-system-ca", "--"],
       windows: {},
     },
-    files: embeddedFileMap ? { "opencode-web-ui.gen.ts": embeddedFileMap } : {},
-    entrypoints: ["./src/index.ts", parserWorker, workerPath, ...(embeddedFileMap ? ["opencode-web-ui.gen.ts"] : [])],
+    files: {
+      "opencode-native-assets.gen.ts": nativeAssets,
+      ...(embeddedFileMap ? { "opencode-web-ui.gen.ts": embeddedFileMap } : {}),
+    },
+    entrypoints: [
+      "./src/index.ts",
+      parserWorker,
+      workerPath,
+      "opencode-native-assets.gen.ts",
+      ...(embeddedFileMap ? ["opencode-web-ui.gen.ts"] : []),
+    ],
     define: {
       OPENCODE_VERSION: `'${Script.version}'`,
       OPENCODE_MIGRATIONS: JSON.stringify(migrations),
