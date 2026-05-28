@@ -241,3 +241,37 @@ Commands and results:
 
 Remaining:
 - This ledger update itself still needs one final push after commit.
+
+## Phase 10: Compiled TUI native asset packaging
+
+Status: completed
+
+What changed:
+- Updated `packages/opencode/script/build.ts` to generate an `opencode-native-assets.gen.ts` entrypoint for each target.
+- The generated entrypoint imports the target platform's OpenTUI native library with `{ type: "file" }`, forcing Bun compile to embed `libopentui.so`, `libopentui.dylib`, or `opentui.dll` in the compiled binary.
+- Left `@parcel/watcher` native packaging unchanged after an attempted watcher asset import produced `$.subscribe is not a function`; the watcher load issue is nonfatal and separate from the TUI render failure.
+
+Why:
+- The compiled `dist/opencode-linux-x64/bin/opencode --mdns` failed before drawing the TUI with `Failed to initialize OpenTUI render library: Failed to open library "/$bunfs/root/libopentui-z1wz5djp.so": No such file or directory`.
+- A minimal Bun compile experiment proved direct `{ type: "file" }` import of `libopentui.so` embeds the same hashed `/$bunfs/root/libopentui-z1wz5djp.so` path and makes `Bun.file(path).exists()` true.
+
+Validation:
+- LSP diagnostics on `packages/opencode/script/build.ts`: no diagnostics.
+- `PATH="/home/jeremy/.bun/bin:$PATH" /home/jeremy/.bun/bin/bun typecheck`: passed with `tsgo --noEmit`.
+- `PATH="/home/jeremy/.bun/bin:$PATH" /home/jeremy/.bun/bin/bun test test/bus/global.test.ts test/session/message-v2.test.ts test/session/compaction.test.ts`: `89 pass`, `0 fail`, `211 expect() calls`.
+- `PATH="/home/jeremy/.bun/bin:$PATH" /home/jeremy/.bun/bin/bun run script/build.ts --single`: passed.
+- `./dist/opencode-linux-x64/bin/opencode --version`: `0.0.0-sisyphus/tool-output-context-cap-20260524-202605280144` after the single-target build.
+- Real TUI smoke with `timeout 8s script -qfec 'OPENCODE_DISABLE_CHANNEL_DB=1 ./dist/opencode-linux-x64/bin/opencode --port 0 --hostname 127.0.0.1 /home/jeremy/tymemud/tmp/opencode-tui-smoke' /tmp/opencode-tui-smoke.out`: produced OpenTUI terminal output and did not log the prior OpenTUI native-library error.
+- `PATH="/home/jeremy/.bun/bin:$PATH" /home/jeremy/.bun/bin/bun run script/build.ts`: full multi-target build passed.
+- Final binary smoke checks after full build:
+  - `./dist/opencode-linux-x64/bin/opencode --version`: `0.0.0-sisyphus/tool-output-context-cap-20260524-202605280146`.
+  - `./dist/opencode-linux-x64-baseline/bin/opencode --version`: `0.0.0-sisyphus/tool-output-context-cap-20260524-202605280146`.
+- Final real TUI smoke with the full-build binary produced OpenTUI terminal output and the latest logs `2026-05-28T014800.log` / `2026-05-28T014801.log` contain no `Failed to initialize OpenTUI`, `Failed to open library`, `libopentui`, or watcher `$.subscribe` errors. The remaining smoke-log errors are expected local MCP config failures from running in `/home/jeremy/tymemud/tmp/opencode-tui-smoke`.
+
+Limitations / risks:
+- This fix addresses OpenTUI native library embedding for compiled binaries. It intentionally does not alter `@parcel/watcher` native loading because the first attempt changed runtime behavior and the watcher issue was nonfatal.
+
+Review:
+- Goal/code Oracle: PASS. The generated static file import directly addresses the compiled OpenTUI native asset packaging failure without watcher overreach.
+- QA review: PASS. Real compiled TUI startup validation proves the native load error is gone.
+- Security Oracle: PASS, severity none. Embedding already-installed OpenTUI native dependency artifacts adds no runtime network, auth, or file-write behavior.
