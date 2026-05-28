@@ -281,32 +281,44 @@ Review:
 Status: completed
 
 What changed:
-- Updated the WebUI session side panel so the Review tab uses the existing `Tabs.Trigger closeButton` pattern.
-- Click and middle-click close behavior now call `view().reviewPanel.close()` for the Review panel.
-- Removed the unused `useSync` import and value from the same touched file after LSP reported TS6133.
+- Restored the top-right Review toggle in the V2 titlebar path, next to Status.
+- User clarified there was historically no tab close button. The missing affordance was the top-right toggle next to Status.
+- Removed the earlier divergent Review-tab close button experiment from the session side panel.
 
 Files and anchors:
-- `packages/app/src/pages/session/session-side-panel.tsx`: Review tab trigger now wires the existing close-button tab affordance to `view().reviewPanel.close()`.
+- `packages/app/src/components/titlebar.tsx`: adds the V2 `#opencode-titlebar-right` mount next to Status.
+- `packages/app/src/components/session/session-header.tsx`: renders a V2-only Review toggle using `IconButtonV2`, the existing `command.review.toggle` label/keybind, and `view().reviewPanel.toggle()`.
+- `packages/app/src/pages/session/session-side-panel.tsx`: removes the earlier Review-tab close button experiment.
 
 Source evidence:
-- `packages/app/src/pages/session/session-side-panel.tsx` is the changed file for the Review panel close affordance and the TS6133 cleanup.
-- Existing tab code already provided the `Tabs.Trigger closeButton` pattern used by other closeable tabs.
+- Root cause: `SessionHeader` still had legacy Review/FileTree controls that portal into `#opencode-titlebar-right`, but the V2 titlebar path did not expose that mount while it rendered Status directly. Result: only Status appeared in V2 titlebar mode.
+- Upstream evidence: current `origin/dev` has an upstream-aligned V2 Review action pattern. We backported that narrowly instead of inventing a new UI.
+- No V2 file-tree toggle was added because the user preferred minimizing divergence and could live without it.
 
 User-visible behavior:
-- Users viewing the Review tab in the WebUI can close that panel from the tab's close affordance. Browser behavior was not manually clicked in this session.
+- Users in V2 titlebar mode should see the Review toggle restored in the top-right titlebar area next to Status after restarting the rebuilt binary. Browser behavior was not manually clicked in this session.
 
 Validation:
-- LSP diagnostics on `packages/app/src/pages/session/session-side-panel.tsx`: no diagnostics found.
+- LSP diagnostics on `packages/app/src/components/titlebar.tsx`, `packages/app/src/components/session/session-header.tsx`, and `packages/app/src/pages/session/session-side-panel.tsx`: no diagnostics found.
 - From `packages/app`: `bun run typecheck` passed with Bun `1.3.14`.
 - From `packages/app`: `bun run test:unit` passed: `333 pass`, `0 fail`, `858 expect() calls`, `58 files`.
-- From `packages/app`: `bun run build` passed; build log redirected to `/tmp/opencode-app-build.log`, `90294 bytes`.
+- From `packages/app`: `bun run build` passed. Vite emitted warnings in dependency/theme/chunk paths outside the touched source files.
 - From repo root: `GIT_MASTER=1 git diff --check` produced no output.
+- From `packages/opencode`: `bun run script/build.ts --single` passed and rebuilt binary `0.0.0-sisyphus/tool-output-context-cap-20260524-202605281952`.
+- Rebuilt binary `--help` smoke passed.
+
+Post-implementation review:
+- Goal review: PASS. The top-right V2 Review affordance is restored and the file-tree toggle omission matches the user's preference.
+- QA reviews: code-level PASS, with live browser confirmation blocked until the rebuilt binary is restarted.
+- Code review: PASS. The patch is minimal, portal/context usage is safe, and no stale Review tab close-button behavior remains.
+- Security review: PASS. The diff adds no new IPC, network, auth/token, unsafe HTML, or permission behavior.
+- Context/upstream review: PASS. No missed upstream/local context requires changing the patch or adding a file-tree toggle.
 
 Manual/browser gap:
-- `agent-browser` command was not installed, Playwright MCP could not launch because Chromium/Chrome is missing at `/opt/google/chrome/chrome`; no app/backend server was started or restarted per `packages/app/AGENTS.md`.
+- No process restart was performed by us. The user must restart the rebuilt binary to see the embedded WebUI change.
 
 Changelog / durable evidence:
 - No root `CHANGELOG.md` exists in this OpenCode repo. This existing durable ledger is the branch-local changelog/evidence artifact for this branch.
 
 Limitations / risks:
-- Browser/manual validation was not run because `agent-browser` was not installed, Playwright MCP could not launch Chromium/Chrome because `/opt/google/chrome/chrome` is missing, and app/server processes were not restarted per package rules. The user should confirm the close button appears in their active WebUI after restart or rebuild.
+- Browser/manual validation was not run because no app/server process was restarted. The user should restart the rebuilt binary and confirm the top-right Review toggle appears next to Status in V2 titlebar mode.
