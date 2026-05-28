@@ -21,7 +21,6 @@ import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
 import { usePlatform } from "@/context/platform"
 import { useSettings } from "@/context/settings"
-import { useSync } from "@/context/sync"
 import { createFileTabListSync } from "@/pages/session/file-tab-scroll"
 import { FileTabContent } from "@/pages/session/file-tabs"
 import { createOpenSessionFileTab, createSessionTabs, getTabReorderIndex, type Sizing } from "@/pages/session/helpers"
@@ -50,7 +49,6 @@ export function SessionSidePanel(props: {
   const layout = useLayout()
   const platform = usePlatform()
   const settings = useSettings()
-  const sync = useSync()
   const file = useFile()
   const language = useLanguage()
   const command = useCommand()
@@ -249,7 +247,27 @@ export function SessionSidePanel(props: {
                         }}
                       >
                         <Show when={reviewTab() && props.canReview()}>
-                          <Tabs.Trigger value="review">
+                          <Tabs.Trigger
+                            value="review"
+                            closeButton={
+                              <TooltipKeybind
+                                title={language.t("common.closeTab")}
+                                keybind={command.keybind("tab.close")}
+                                placement="bottom"
+                                gutter={10}
+                              >
+                                <IconButton
+                                  icon="close-small"
+                                  variant="ghost"
+                                  class="h-5 w-5"
+                                  onClick={() => view().reviewPanel.close()}
+                                  aria-label={language.t("common.closeTab")}
+                                />
+                              </TooltipKeybind>
+                            }
+                            hideCloseButton
+                            onMiddleClick={() => view().reviewPanel.close()}
+                          >
                             <div class="flex items-center gap-1.5">
                               <div>{language.t("session.tab.review")}</div>
                               <Show when={props.hasReview()}>

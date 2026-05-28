@@ -8,7 +8,7 @@ Worktree and branch:
 - Base: latest fetched `origin/dev` at `0cf99cf5f`.
 
 Scope boundaries:
-- In scope: `packages/opencode/src/session/message-v2.ts`, `packages/opencode/src/session/compaction.ts`, `packages/opencode/test/session/message-v2.test.ts`, `packages/opencode/src/bus/global.ts`, `packages/opencode/test/bus/global.test.ts`, this ledger, and the durable plan.
+- In scope: `packages/opencode/src/session/message-v2.ts`, `packages/opencode/src/session/compaction.ts`, `packages/opencode/test/session/message-v2.test.ts`, `packages/opencode/src/bus/global.ts`, `packages/opencode/test/bus/global.test.ts`, `packages/app/src/pages/session/session-side-panel.tsx`, this ledger, and the durable plan.
 - Out of scope: generated SDKs, broad compaction selection rewrites, TUI reconnect work, app prompt-submit hydration work, server restarts, process killing.
 
 Validation expectations:
@@ -275,3 +275,38 @@ Review:
 - Goal/code Oracle: PASS. The generated static file import directly addresses the compiled OpenTUI native asset packaging failure without watcher overreach.
 - QA review: PASS. Real compiled TUI startup validation proves the native load error is gone.
 - Security Oracle: PASS, severity none. Embedding already-installed OpenTUI native dependency artifacts adds no runtime network, auth, or file-write behavior.
+
+## Phase 11: WebUI Review panel close affordance
+
+Status: completed
+
+What changed:
+- Updated the WebUI session side panel so the Review tab uses the existing `Tabs.Trigger closeButton` pattern.
+- Click and middle-click close behavior now call `view().reviewPanel.close()` for the Review panel.
+- Removed the unused `useSync` import and value from the same touched file after LSP reported TS6133.
+
+Files and anchors:
+- `packages/app/src/pages/session/session-side-panel.tsx`: Review tab trigger now wires the existing close-button tab affordance to `view().reviewPanel.close()`.
+
+Source evidence:
+- `packages/app/src/pages/session/session-side-panel.tsx` is the changed file for the Review panel close affordance and the TS6133 cleanup.
+- Existing tab code already provided the `Tabs.Trigger closeButton` pattern used by other closeable tabs.
+
+User-visible behavior:
+- Users viewing the Review tab in the WebUI can close that panel from the tab's close affordance. Browser behavior was not manually clicked in this session.
+
+Validation:
+- LSP diagnostics on `packages/app/src/pages/session/session-side-panel.tsx`: no diagnostics found.
+- From `packages/app`: `bun run typecheck` passed with Bun `1.3.14`.
+- From `packages/app`: `bun run test:unit` passed: `333 pass`, `0 fail`, `858 expect() calls`, `58 files`.
+- From `packages/app`: `bun run build` passed; build log redirected to `/tmp/opencode-app-build.log`, `90294 bytes`.
+- From repo root: `GIT_MASTER=1 git diff --check` produced no output.
+
+Manual/browser gap:
+- `agent-browser` command was not installed, Playwright MCP could not launch because Chromium/Chrome is missing at `/opt/google/chrome/chrome`; no app/backend server was started or restarted per `packages/app/AGENTS.md`.
+
+Changelog / durable evidence:
+- No root `CHANGELOG.md` exists in this OpenCode repo. This existing durable ledger is the branch-local changelog/evidence artifact for this branch.
+
+Limitations / risks:
+- Browser/manual validation was not run because `agent-browser` was not installed, Playwright MCP could not launch Chromium/Chrome because `/opt/google/chrome/chrome` is missing, and app/server processes were not restarted per package rules. The user should confirm the close button appears in their active WebUI after restart or rebuild.
