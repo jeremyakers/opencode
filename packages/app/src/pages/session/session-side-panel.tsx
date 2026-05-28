@@ -247,27 +247,7 @@ export function SessionSidePanel(props: {
                         }}
                       >
                         <Show when={reviewTab() && props.canReview()}>
-                          <Tabs.Trigger
-                            value="review"
-                            closeButton={
-                              <TooltipKeybind
-                                title={language.t("common.closeTab")}
-                                keybind={command.keybind("tab.close")}
-                                placement="bottom"
-                                gutter={10}
-                              >
-                                <IconButton
-                                  icon="close-small"
-                                  variant="ghost"
-                                  class="h-5 w-5"
-                                  onClick={() => view().reviewPanel.close()}
-                                  aria-label={language.t("common.closeTab")}
-                                />
-                              </TooltipKeybind>
-                            }
-                            hideCloseButton
-                            onMiddleClick={() => view().reviewPanel.close()}
-                          >
+                          <Tabs.Trigger value="review">
                             <div class="flex items-center gap-1.5">
                               <div>{language.t("session.tab.review")}</div>
                               <Show when={props.hasReview()}>

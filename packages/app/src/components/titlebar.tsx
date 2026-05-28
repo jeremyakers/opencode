@@ -465,6 +465,7 @@ export function Titlebar(props: { update?: TitlebarUpdate }) {
                   </Show>
                   <div class="min-w-0 flex-1" />
                 </div>
+                <div id="opencode-titlebar-right" class="flex items-center gap-1 shrink-0 justify-end" />
                 <Show when={currentSessionTab()?.dir} keyed>
                   {(dir) => (
                     <SDKProvider directory={dir}>
@@ -659,10 +660,6 @@ function TitlebarUpdatePill(props: { update?: TitlebarUpdate }) {
       </button>
     </Show>
   )
-}
-
-function DesktopTitlebarIconButton(props: Parameters<typeof IconButtonV2>[0]) {
-  return
 }
 
 function TabNavItem(props: {

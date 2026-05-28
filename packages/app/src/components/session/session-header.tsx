@@ -3,6 +3,7 @@ import { Button } from "@opencode-ai/ui/button"
 import { DropdownMenu } from "@opencode-ai/ui/dropdown-menu"
 import { Icon } from "@opencode-ai/ui/icon"
 import { IconButton } from "@opencode-ai/ui/icon-button"
+import { IconButtonV2 } from "@opencode-ai/ui/v2/components/icon-button-v2.jsx"
 import { Keybind } from "@opencode-ai/ui/keybind"
 import { Spinner } from "@opencode-ai/ui/spinner"
 import { showToast } from "@opencode-ai/ui/toast"
@@ -271,6 +272,7 @@ export function SessionHeader() {
 
   const [centerMount, setCenterMount] = createSignal<HTMLElement | null>(null)
   const [rightMount, setRightMount] = createSignal<HTMLElement | null>(null)
+  const useV2Titlebar = import.meta.env.VITE_OPENCODE_CHANNEL !== "prod"
   onMount(() => {
     setCenterMount(document.getElementById("opencode-titlebar-center"))
     setRightMount(document.getElementById("opencode-titlebar-right"))
@@ -311,8 +313,11 @@ export function SessionHeader() {
       <Show when={rightMount()}>
         {(mount) => (
           <Portal mount={mount()}>
-            <div class="flex items-center gap-2">
-              <Show when={projectDirectory()}>
+            <Show
+              when={useV2Titlebar}
+              fallback={
+                <div class="flex items-center gap-2">
+                  <Show when={projectDirectory()}>
                 <div class="hidden xl:flex items-center">
                   <Show
                     when={canOpen()}
@@ -494,10 +499,40 @@ export function SessionHeader() {
                   </Show>
                 </div>
               </div>
-            </div>
+                </div>
+              }
+            >
+              <SessionHeaderV2Actions />
+            </Show>
           </Portal>
         )}
       </Show>
     </>
+  )
+}
+
+function SessionHeaderV2Actions() {
+  const command = useCommand()
+  const language = useLanguage()
+  const { view } = useSessionLayout()
+  const reviewOpened = () => view().reviewPanel.opened()
+
+  return (
+    <div class="flex items-center gap-1 shrink-0">
+      <TooltipKeybind title={language.t("command.review.toggle")} keybind={command.keybind("review.toggle")}>
+        <IconButtonV2
+          type="button"
+          variant="ghost-muted"
+          size="large"
+          class="!w-9 shrink-0"
+          state={reviewOpened() ? "pressed" : undefined}
+          onClick={() => view().reviewPanel.toggle()}
+          aria-label={language.t("command.review.toggle")}
+          aria-expanded={reviewOpened()}
+          aria-controls="review-panel"
+          icon={<Icon size="small" name={reviewOpened() ? "review-active" : "review"} />}
+        />
+      </TooltipKeybind>
+    </div>
   )
 }
