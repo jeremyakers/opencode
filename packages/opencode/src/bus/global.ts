@@ -21,6 +21,7 @@ class GlobalBusEmitter extends EventEmitter<{
 
 export const GlobalBus = new GlobalBusEmitter()
 
-// GlobalBus fans out to SSE clients, worker bridges, and control-plane waiters;
-// concurrent OpenCode sessions can legitimately exceed Node's default of 10.
-GlobalBus.setMaxListeners(100)
+// GlobalBus is an intentional process-wide fan-out hub for SSE clients, worker
+// bridges, and control-plane waiters; disable EventEmitter's listener-count
+// leak heuristic rather than chasing arbitrary client-count thresholds.
+GlobalBus.setMaxListeners(0)
