@@ -322,3 +322,34 @@ Changelog / durable evidence:
 
 Limitations / risks:
 - Browser/manual validation was not run because no app/server process was restarted. The user should restart the rebuilt binary and confirm the top-right Review toggle appears next to Status in V2 titlebar mode.
+
+## Phase 12: GlobalBus listener warning crash follow-up
+
+Status: completed
+
+What changed:
+- Changed the `GlobalBus` listener limit from the earlier arbitrary cap of `100` to EventEmitter's unlimited setting.
+- Kept the fix scoped to the singleton `GlobalBus` fan-out hub.
+
+Files and anchors:
+- `packages/opencode/src/bus/global.ts`: documents that `GlobalBus` intentionally fans out to SSE clients, worker bridges, and control-plane waiters, then calls `GlobalBus.setMaxListeners(0)`.
+
+Source evidence:
+- The crash screenshot showed `_maxListeners: 100`, event type `event`, listener count `101`, and stack `node:events:addListener`, which matches the `GlobalBus` singleton after the previous threshold change.
+- `packages/opencode/src/server/routes/instance/httpapi/handlers/global.ts` adds one `GlobalBus.on("event", handler)` per `/global/event` SSE stream and removes it through `Effect.acquireRelease`.
+- `packages/opencode/src/cli/cmd/tui/worker.ts` adds one permanent worker bridge listener.
+- `packages/opencode/src/control-plane/util.ts` adds temporary wait-event listeners with cleanup.
+- `origin/dev` has no upstream `GlobalBus` listener-limit fix to cherry-pick.
+
+Validation:
+- Oracle review: recommended treating this as an intentional fan-out EventEmitter false positive rather than chasing another arbitrary threshold.
+- LSP diagnostics on `packages/opencode/src/bus/global.ts`: no diagnostics found.
+- From `packages/opencode`: `bun -e 'import { GlobalBus } from "./src/bus/global.ts"; console.log(GlobalBus.getMaxListeners())'` printed `0`.
+- From `packages/opencode`: a targeted 101-listener script printed `{"max":0,"count":101,"warnings":0}`.
+- From `packages/opencode`: `bun run typecheck` passed.
+- From repo root: `GIT_MASTER=1 git diff --check` produced no output.
+- From `packages/opencode`: `bun run script/build.ts --single` passed and rebuilt binary `0.0.0-sisyphus/tool-output-context-cap-20260524-202605290238`.
+- Rebuilt binary `--help` smoke passed.
+
+Manual/browser gap:
+- No app/server restart was performed by us. The user should restart the rebuilt binary after this fix is rebuilt and pushed.
