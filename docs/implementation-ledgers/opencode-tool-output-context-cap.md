@@ -353,3 +353,30 @@ Validation:
 
 Manual/browser gap:
 - No app/server restart was performed by us. The user should restart the rebuilt binary after this fix is rebuilt and pushed.
+
+## Phase 13: Upstream `/vcs/diff` memory fix sync
+
+Status: completed
+
+What changed:
+- Merged `origin/dev` into `sisyphus/tool-output-context-cap-20260524` with a normal merge commit, preserving the already-pushed branch history and avoiding a force-push.
+- Kept the branch's tool-output replay cap on top of upstream's session/message refactor.
+- Aligned the message-v2 cap test type annotations with upstream's `SessionV1` type exports.
+
+Upstream evidence:
+- `d1f597b5b fix(vcs): avoid unbounded diff memory usage (#25581)` changed `packages/opencode/src/git/index.ts` and `packages/opencode/src/project/vcs.ts`, plus regression tests, to avoid unbounded diff memory usage.
+- `2f2fcc165 fix(opencode): remove automatic full session diffs (#30127)` later removed automatic full session diffs from session/summary flows.
+- After fetching, `origin/dev` advanced to `107180701` and this branch was behind by `445` commits before the merge.
+
+Merge resolution:
+- `packages/app/src/components/session/session-header.tsx` and `packages/app/src/components/titlebar.tsx`: accepted upstream's newer V2 Review/Status titlebar action structure.
+- `packages/opencode/src/session/message-v2.ts`: accepted upstream's refactor, then restored the exported `TOOL_OUTPUT_MAX_CHARS` default cap used by this branch's compaction and tests.
+- `packages/opencode/test/session/message-v2.test.ts`: changed cap-test type annotations from removed `MessageV2` type exports to `SessionV1` types.
+
+Validation:
+- Root `bun install` completed after the upstream merge and left the worktree clean.
+- LSP diagnostics on the resolved app titlebar/header files, `packages/opencode/src/session/message-v2.ts`, and `packages/opencode/test/session/message-v2.test.ts`: no diagnostics found.
+- From `packages/opencode`: `bun run typecheck` passed after refreshing dependencies and fixing the test type annotations.
+- From `packages/app`: `bun run typecheck` passed.
+- From `packages/opencode`: `bun test test/session/message-v2.test.ts` passed: `37 pass`, `0 fail`, `60 expect() calls`.
+- From repo root: `GIT_MASTER=1 git diff --check` produced no output.
