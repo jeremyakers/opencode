@@ -103,6 +103,15 @@ function isOrphanedInterruptedTool(part: SessionV1.ToolPart) {
   return part.state.status === "error" && part.state.metadata?.interrupted === true
 }
 
+function promisesContinuation(parts: SessionV1.Part[]) {
+  const text = parts
+    .filter((part): part is SessionV1.TextPart => part.type === "text")
+    .map((part) => part.text.toLowerCase())
+    .join("\n")
+  return /\b(i'll|i will) continue (with |to )?(the )?(next|remaining|follow-up|rest)\b/.test(text)
+    || /\bcontinuing (with |to )?(the )?(next|remaining|follow-up|rest)\b/.test(text)
+}
+
 export interface Interface {
   readonly cancel: (sessionID: SessionID) => Effect.Effect<void>
   readonly prompt: (input: PromptInput) => Effect.Effect<SessionV1.WithParts, Image.Error>
@@ -1186,6 +1195,7 @@ export const layer = Layer.effect(
         const ctx = yield* InstanceState.context
         let structured: unknown
         let step = 0
+        let stopContinuationAttempted = false
         const session = yield* sessions.get(sessionID).pipe(Effect.orDie)
 
         while (true) {
@@ -1217,19 +1227,33 @@ export const layer = Layer.effect(
             !hasToolCalls &&
             lastUser.id < lastAssistant.id
           ) {
-            const orphan = lastAssistantMsg?.parts.find(
-              (part): part is SessionV1.ToolPart => part.type === "tool" && isOrphanedInterruptedTool(part),
-            )
-            if (orphan) {
-              yield* Effect.logWarning("loop exit with orphaned interrupted tool", {
+            if (
+              lastAssistant.finish === "stop" &&
+              !lastAssistant.error &&
+              lastAssistantMsg &&
+              !stopContinuationAttempted &&
+              promisesContinuation(lastAssistantMsg.parts)
+            ) {
+              stopContinuationAttempted = true
+              yield* Effect.logWarning("continuing after stop text promised continuation", {
                 "session.id": sessionID,
                 messageID: lastAssistant.id,
-                tool: orphan.tool,
-                callID: orphan.callID,
               })
+            } else {
+              const orphan = lastAssistantMsg?.parts.find(
+                (part): part is SessionV1.ToolPart => part.type === "tool" && isOrphanedInterruptedTool(part),
+              )
+              if (orphan) {
+                yield* Effect.logWarning("loop exit with orphaned interrupted tool", {
+                  "session.id": sessionID,
+                  messageID: lastAssistant.id,
+                  tool: orphan.tool,
+                  callID: orphan.callID,
+                })
+              }
+              yield* Effect.logInfo("exiting loop", { "session.id": sessionID })
+              break
             }
-            yield* Effect.logInfo("exiting loop", { "session.id": sessionID })
-            break
           }
 
           step++
