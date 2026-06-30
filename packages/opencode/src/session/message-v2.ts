@@ -47,8 +47,9 @@ interface FetchDecompressionError extends Error {
 
 export const SYNTHETIC_ATTACHMENT_PROMPT = "Attached media from tool result:"
 export { isMedia }
+export const TOOL_OUTPUT_MAX_CHARS = 2_000
 
-function truncateToolOutput(text: string, maxChars?: number) {
+function truncateToolOutput(text: string, maxChars = TOOL_OUTPUT_MAX_CHARS) {
   if (!maxChars || text.length <= maxChars) return text
   const omitted = text.length - maxChars
   return `${text.slice(0, maxChars)}\n[Tool output truncated for compaction: omitted ${omitted} chars]`

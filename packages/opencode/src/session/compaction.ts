@@ -30,7 +30,6 @@ export const Event = SessionCompactionEvent
 
 export const PRUNE_MINIMUM = 20_000
 export const PRUNE_PROTECT = 40_000
-const TOOL_OUTPUT_MAX_CHARS = 2_000
 const PRUNE_PROTECTED_TOOLS = ["skill"]
 const DEFAULT_TAIL_TURNS = 2
 const MIN_PRESERVE_RECENT_TOKENS = 2_000
@@ -353,7 +352,7 @@ export const layer = Layer.effect(
       yield* plugin.trigger("experimental.chat.messages.transform", {}, { messages: msgs })
       const modelMessages = yield* MessageV2.toModelMessagesEffect(msgs, model, {
         stripMedia: true,
-        toolOutputMaxChars: TOOL_OUTPUT_MAX_CHARS,
+        toolOutputMaxChars: MessageV2.TOOL_OUTPUT_MAX_CHARS,
       })
       const tailIndex = selected.tail_start_id
         ? history.findIndex((message) => message.info.id === selected.tail_start_id)
@@ -364,7 +363,7 @@ export const layer = Layer.effect(
           : JSON.stringify(
               yield* MessageV2.toModelMessagesEffect(history.slice(tailIndex), model, {
                 stripMedia: true,
-                toolOutputMaxChars: TOOL_OUTPUT_MAX_CHARS,
+                toolOutputMaxChars: MessageV2.TOOL_OUTPUT_MAX_CHARS,
               }),
             )
       const ctx = yield* InstanceState.context
